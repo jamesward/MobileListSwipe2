@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+               backgroundColor="#333333"
+               applicationComplete="appComplete()"
+               >
+
+  <fx:Script>
+  <![CDATA[
+    import mx.controls.Alert;
+      
+    import twitter.api.*;
+    import twitter.api.data.*;
+    import twitter.api.events.*;
+    
+    import flash.utils.Dictionary;
+    
+    import mx.collections.ArrayCollection;
+    
+    [Bindable]
+    private var userArray:ArrayCollection;
+  
+    private var prevY:Number;
+    
+    private var velocity:Number = 0;
+    
+    private var lastMove:Number = 0;
+        
+    private static const MOVE_INTERVAL:Number = 100;
+    
+    private function appComplete():void
+    {
+      if (Multitouch.supportsTouchEvents)
+      {
+        Multitouch.inputMode = MultitouchInputMode.TOUCH_POINT;
+      
+        addEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin, true);
+        addEventListener(TouchEvent.TOUCH_MOVE, onTouchMove, true);
+        addEventListener(TouchEvent.TOUCH_END, onTouchEnd, true);
+      }
+      
+      s.setFocus();
+      s.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown, true);
+  
+      var twit:Twitter = new Twitter();
+      twit.addEventListener(TwitterEvent.ON_FRIENDS_RESULT,onFriendsLoad);
+      twit.loadFriends("riacowboy", true);
+    }
+    
+    private function onFriendsLoad(event:TwitterEvent):void
+    {
+      userArray = new ArrayCollection(event.data as Array);
+    }
+            
+            
+    private function onTouchBegin(event:TouchEvent):void
+    {
+      velocity = 0;
+      
+      if (a.isPlaying)
+      {
+        a.stop();
+      }
+      
+      prevY = event.stageY;
+    }
+    
+    private function onTouchMove(event:TouchEvent):void
+    {
+      var deltaY:Number = Math.round((prevY - event.stageY));
+      
+      // average the current velocity with the new velocity
+      velocity = (deltaY + velocity) / 2;
+        
+      //if ((new Date().time - lastMove) > MOVE_INTERVAL)
+      //{
+        var desiredY:Number = dg.verticalScrollPosition + deltaY;
+        
+        scrollTo(desiredY);
+        
+        prevY = event.stageY;
+        
+        lastMove = new Date().time;
+      //}
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+    }
+    
+    private function onTouchEnd(event:TouchEvent):void
+    {
+      var scrollDistance:Number = (velocity * 6);
+      
+      // calc distance
+      smp.valueFrom = dg.verticalScrollPosition;
+      if (dg.verticalScrollPosition + scrollDistance < 0)
+      {
+        smp.valueTo = 0;
+      }
+      else if (dg.verticalScrollPosition + scrollDistance > dg.contentHeight)
+      {
+        smp.valueTo = dg.contentHeight;
+      }
+      else
+      {
+        smp.valueTo = dg.verticalScrollPosition + scrollDistance;
+      }
+
+      a.play();
+    }
+    
+    private function onKeyDown(event:KeyboardEvent):void
+    {
+      if (event.keyCode == Keyboard.UP)
+      {
+        scrollTo(dg.contentHeight + 160);
+      }
+      else if (event.keyCode == Keyboard.DOWN)
+      {
+        scrollTo(dg.contentHeight - 160);
+      }
+    }
+    
+    private function scrollTo(y:Number):void
+    {
+      if (y < 0)
+      {
+        y = 0;
+        
+        velocity = 0;
+      }
+      else if (y > dg.contentHeight)
+      {
+        y = dg.contentHeight;
+        
+        velocity = 0;
+      }
+      
+      dg.verticalScrollPosition = y;
+    }
+  ]]>
+  </fx:Script>
+  
+  <fx:Declarations>
+    <s:Animate id="a" target="{dg}" duration="1000">
+      <s:motionPaths>
+        <s:SimpleMotionPath id="smp" property="verticalScrollPosition"/>
+      </s:motionPaths>
+      <s:easer>
+        <s:Power exponent="4" easeInFraction="0"/>
+      </s:easer>
+    </s:Animate>
+  </fx:Declarations>
+  
+  <s:Label id="l" text="Fetching Tweets" color="#dddddd" fontSize="24" horizontalCenter="0" verticalCenter="0"/>
+  
+  <s:Scroller id="s" width="100%" height="100%" minViewportInset="0">
+    
+    <s:DataGroup id="dg" dataProvider="{userArray}">
+      <s:layout>
+        <s:VerticalLayout gap="1"/>
+      </s:layout>
+      
+      <s:updateComplete>
+        <![CDATA[
+        if (userArray.length > 0)
+        {
+          l.visible = false;
+        }
+        ]]>
+      </s:updateComplete>
+      
+      <s:itemRenderer>
+        <fx:Component>          
+          <s:ItemRenderer autoDrawBackground="false" width="100%" height="100">
+            
+            <s:Rect width="100%" height="100%">
+              <s:fill>
+                <mx:SolidColor color="0xffffff"/>
+              </s:fill>
+            </s:Rect>
+  
+            <mx:Image source="{data.profileImageUrl}" width="80" height="80" top="10" left="10"/>
+            
+            <s:RichText content="{data.status.text}" fontSize="18" top="10" left="100" right="10" bottom="10"/>
+            
+          </s:ItemRenderer>
+        </fx:Component>
+      </s:itemRenderer>
+    </s:DataGroup>
+    
+  </s:Scroller>
+  
+</s:Application>
